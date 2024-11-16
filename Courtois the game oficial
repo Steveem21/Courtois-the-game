@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego Courtois y Mecheros</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: url('https://i.pinimg.com/736x/55/29/be/5529be88191ca2c8fec1a012b8798be8.jpg') no-repeat center center fixed;
+            background-size: cover;
+            font-family: Arial, sans-serif;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        .score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 32px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px 20px;
+            border-radius: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .gameOverBox {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #1d1d1d;
+            padding: 30px;
+            border-radius: 15px;
+            color: white;
+            text-align: center;
+            display: none;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .gameOverBox h1 {
+            font-size: 30px;
+            margin: 10px 0;
+        }
+
+        .gameOverBox p {
+            font-size: 24px;
+        }
+
+        .gameOverBox button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            border: none;
+            border-radius: 10px;
+            background-color: #28a745;
+            color: white;
+            cursor: pointer;
+        }
+
+        .gameOverBox button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="score" class="score">Puntos: 0</div>
+    <div id="gameOver" class="gameOverBox">
+        <h1>¡Perdiste!</h1>
+        <p id="finalScore">Puntuación: 0</p>
+        <p>Un mechero te dio</p>
+        <button id="restartButton">Volver a jugar</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const courtoisImg = new Image();
+        courtoisImg.src = 'https://www.infobiwenger.com/img/jugadores/16738.png';
+
+        const lighterImg = new Image();
+        lighterImg.src = 'https://vivasuecia.universalmusiconline.es/cdn/shop/files/PNG_mechero_azul_vivasuecia_dropdiciembre_back_2.png';
+
+        let courtois = { x: canvas.width / 2, y: canvas.height / 2, radius: 30, color: 'white' };
+        let lighters = [];
+        let lighterSpeed = 4;
+        let score = 0;
+        let collisionDetected = false;
+        let timeAlive = 0;
+        let lastTime = Date.now();
+        let lighterCount = 5;
+        let lastSpeedIncrease = Date.now();
+
+        function resetGame() {
+            courtois = { x: canvas.width / 2, y: canvas.height / 2, radius: 30, color: 'white' };
+            lighters = [];
+            lighterSpeed = 4;
+            score = 0;
+            timeAlive = 0;
+            collisionDetected = false;
+            lastTime = Date.now();
+            lastSpeedIncrease = Date.now();
+            spawnLighters();
+            document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('score').textContent = 'Puntos: 0';
+            animate();
+        }
+
+        function spawnLighters() {
+            for (let i = 0; i < lighterCount; i++) {
+                const lighter = {
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * -canvas.height,
+                    width: 50,
+                    height: 70
+                };
+                lighters.push(lighter);
+            }
+        }
+        spawnLighters();
+
+        function detectCollision(lighter, courtois) {
+            const dx = lighter.x + lighter.width / 2 - courtois.x;
+            const dy = lighter.y + lighter.height / 2 - courtois.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            return distance < courtois.radius;
+        }
+
+        function drawCourtois() {
+            ctx.beginPath();
+            ctx.arc(courtois.x, courtois.y, courtois.radius, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.fillStyle = courtois.color;
+            ctx.fill();
+            ctx.drawImage(courtoisImg, courtois.x - courtois.radius, courtois.y - courtois.radius, courtois.radius * 2, courtois.radius * 2);
+        }
+
+        function drawLighters() {
+            lighters.forEach(lighter => {
+                ctx.drawImage(lighterImg, lighter.x, lighter.y, lighter.width, lighter.height);
+            });
+        }
+
+        function updateLighters() {
+            lighters.forEach(lighter => {
+                lighter.y += lighterSpeed;
+                if (lighter.y > canvas.height) {
+                    lighter.y = -lighter.height;
+                    lighter.x = Math.random() * canvas.width;
+                }
+                if (detectCollision(lighter, courtois)) {
+                    collisionDetected = true;
+                    courtois.color = 'red';
+                    showGameOver();
+                }
+            });
+        }
+
+        function showGameOver() {
+            const gameOverBox = document.getElementById('gameOver');
+            const finalScore = document.getElementById('finalScore');
+            finalScore.textContent = 'Puntuación: ' + timeAlive;
+            gameOverBox.style.display = 'block';
+        }
+
+        canvas.addEventListener('touchmove', (e) => {
+            const touch = e.touches[0];
+            courtois.x = touch.clientX;
+            courtois.y = touch.clientY;
+        });
+
+        function updateScore() {
+            const currentTime = Date.now();
+            if (currentTime - lastTime >= 1000) {
+                timeAlive += 2;
+                document.getElementById('score').textContent = 'Puntos: ' + timeAlive;
+                lastTime = currentTime;
+            }
+        }
+
+        function increaseSpeed() {
+            const currentTime = Date.now();
+            if (currentTime - lastSpeedIncrease >= 5000) {
+                lighterSpeed += 0.5;
+                lastSpeedIncrease = currentTime;
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawCourtois();
+            drawLighters();
+            updateLighters();
+            updateScore();
+            increaseSpeed();
+
+            if (!collisionDetected) {
+                requestAnimationFrame(animate);
+            }
+        }
+
+        document.getElementById('restartButton').addEventListener('click', resetGame);
+
+        courtoisImg.onload = () => {
+            lighterImg.onload = () => {
+                animate();
+            };
+        };
+    </script>
+</body>
+</html>
